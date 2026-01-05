@@ -1,11 +1,14 @@
 import express from "express";
 import todosRouter from "./routes/todos";
 import { notFoundHandler, errorHandler } from "./middleware/errorHandler.js";
+import { loggingMiddleware } from "./middleware/validation";
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+app.use(loggingMiddleware);
 
 app.use("/api/todos", todosRouter);
 

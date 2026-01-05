@@ -22,6 +22,8 @@ export function errorHandler(
     success: false,
     error: err.message,
   });
+
+  next();
 }
 
 export function notFoundHandler(req: Request, res: Response) {

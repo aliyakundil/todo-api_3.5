@@ -24,12 +24,14 @@ const router = Router();
 router.get(
   "/",
   validateAndHandle([validateTodoQuery]),
-  (req: Request, res: Response<ApiResponse<Todo[]>>) => {
-    const { todo, meta } = getTodos(req.query as unknown as PaginationQuery);
+  (req: Request, res: Response) => {
+    const { todos, total, filtered } = getTodos(
+      req.query as unknown as PaginationQuery,
+    );
     res.json({
-      success: true,
-      data: todo,
-      meta,
+      todos,
+      total,
+      filtered,
     });
   },
 );
@@ -133,7 +135,7 @@ router.delete(
       });
     }
 
-    res.json({
+    res.status(204).json({
       success: true,
       data: null,
     });

@@ -1,5 +1,15 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
 
+export function loggingMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  const timestamp = new Date().toISOString();
+  console.log(`${timestamp} ${req.method} ${req.originalUrl}`);
+  next();
+}
+
 export function validateCreateTodo(
   req: Request,
   res: Response,
@@ -69,12 +79,14 @@ export function validateTodoId(
   res: Response,
   next: NextFunction,
 ) {
-  const { id } = req.body;
+  const { id } = req.params;
+
+  const paramsId = Number(id);
 
   const errors = [];
 
-  if (id !== undefined)
-    if (!id || typeof id !== "number")
+  if (paramsId !== undefined)
+    if (!paramsId || typeof paramsId !== "number")
       errors.push("id is required and must be number");
 
   if (errors.length > 0) {
@@ -126,8 +138,8 @@ export function validateTodoQuery(
       errors.push("строка поиска не может быть пустой");
 
   if (sort !== undefined)
-    if (!["text", "dueDate", "priority"].includes(sort as string))
-      errors.push("sort должен быть text, dueDate или priority");
+    if (!["createdAt", "dueDate"].includes(sort as string))
+      errors.push("sort должен быть createdAt, dueDate");
 
   if (errors.length > 0) {
     res.status(400).json({

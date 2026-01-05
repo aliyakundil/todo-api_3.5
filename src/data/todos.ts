@@ -1,10 +1,16 @@
+export enum Priority {
+  Low = "low",
+  Medium = "medium",
+  High = "high",
+}
+
 export interface Todo {
   id: number;
-  text: string;
-  description: string;
+  title: string;
+  description?: string;
   completed: boolean;
-  priority: "low" | "medium" | "high";
-  dueDate: Date;
+  priority: Priority;
+  dueDate?: Date;
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -14,28 +20,28 @@ export let nextId = 1;
 export const todos: Todo[] = [
   {
     id: nextId++,
-    text: "Learn TypeScript",
+    title: "Learn TypeScript",
     description: "Finish the TODO API",
     completed: false,
-    priority: "high",
+    priority: Priority.High,
     dueDate: new Date("2024-12-31"),
     createdAt: new Date("2024-01-01"),
   },
   {
     id: nextId++,
-    text: "Build API",
+    title: "Build API",
     description: "Finish the TODO API",
     completed: true,
-    priority: "medium",
+    priority: Priority.Medium,
     dueDate: new Date("2023-12-31"),
     createdAt: new Date("2024-01-02"),
   },
   {
     id: nextId++,
-    text: "Write tests",
+    title: "Write tests",
     description: "Finish the TODO API",
     completed: false,
-    priority: "low",
+    priority: Priority.Low,
     dueDate: new Date("2026-01-03"),
     createdAt: new Date("2024-01-03"),
   },
@@ -45,12 +51,6 @@ export type ApiResponse<T> =
   | {
       success: true;
       data: T;
-      meta?: {
-        total: number;
-        page: number;
-        limit: number;
-        totalPage: number;
-      };
     }
   | {
       success: false;
@@ -62,23 +62,24 @@ export interface PaginationQuery {
   page?: string;
   limit?: string;
   completed?: string;
-  priority?: string;
+  priority?: Priority;
   search?: string;
   sort?: string;
 }
 
 export interface CreateTodoInput {
-  text: string;
-  description: string;
-  priority?: "low" | "medium" | "high";
-  dueDate: Date;
+  title: string;
+  description?: string;
+  priority?: Priority;
+  dueDate?: Date;
   completed?: string | boolean;
 }
 
 export interface UpdateTodoInput {
-  text: string;
-  description: string;
-  priority?: "low" | "medium" | "high";
+  title?: string;
+  description?: string;
+  priority?: Priority;
+  dueDate?: Date;
   completed?: string | boolean;
 }
 
@@ -100,36 +101,21 @@ export function getTodos(options: PaginationQuery) {
       if (item.priority !== options.priority) return false;
 
     if (options.search) {
-      if (!item.text.toLowerCase().includes(options.search.toLowerCase()))
+      if (!item.title.toLowerCase().includes(options.search.toLowerCase()))
         return false;
     }
 
     return true;
   });
 
-  if (options.sort) {
-    const sortField = options.sort as keyof Todo;
+  if (options.sort === "createdAt" || options.sort === "dueDate") {
     todo.sort((a, b) => {
+      const sortField = options.sort as "createdAt" | "dueDate";
       const aVal = a[sortField];
       const bVal = b[sortField];
 
-      if (aVal === undefined) return 1;
-      if (bVal === undefined) return -1;
-
-      if (sortField === "priority") {
-        const order = { low: 1, medium: 2, high: 3 };
-        return (
-          order[aVal as keyof typeof order] - order[bVal as keyof typeof order]
-        );
-      }
-
-      if (typeof aVal === "string" && typeof bVal === "string") {
-        return aVal.localeCompare(bVal);
-      }
-
-      if (typeof aVal === "number" && typeof bVal === "number") {
-        return aVal - bVal;
-      }
+      if (!aVal) return 1;
+      if (!bVal) return -1;
 
       if (aVal instanceof Date && bVal instanceof Date) {
         return aVal.getTime() - bVal.getTime();
@@ -143,13 +129,9 @@ export function getTodos(options: PaginationQuery) {
   const paged = todo.slice(start, start + limit);
 
   return {
-    todo: paged,
-    meta: {
-      total: todo.length,
-      page: page,
-      limit: limit,
-      totalPage: Math.ceil(todo.length / limit),
-    },
+    todos: paged,
+    total: todos.length,
+    filtered: todo.length,
   };
 }
 
@@ -158,15 +140,19 @@ export function getTodoById(id: number): Todo | null {
 }
 
 export function createTodo(input: CreateTodoInput): Todo {
-  const newTodo = {
+  const newTodo: Todo = {
     id: nextId++,
-    text: input.text.trim(),
-    description: input.description.trim(),
+    title: input.title.trim(),
     completed: input.completed === "true" || input.completed === "false",
-    priority: input.priority ?? "low",
-    dueDate: input.dueDate,
+    priority: input.priority ?? Priority.Low,
     createdAt: new Date(),
   };
+  if (input.dueDate) {
+    newTodo.dueDate = input.dueDate;
+  }
+  if (input.description) {
+    newTodo.description = input.description?.trim();
+  }
   todos.push(newTodo);
   return newTodo;
 }
@@ -176,8 +162,9 @@ export function updateTodo(id: number, input: UpdateTodoInput): Todo | null {
 
   if (!todoUpdate) return null;
 
-  if (input.text !== undefined) todoUpdate.text = input.text.trim();
-
+  if (input.title !== undefined) todoUpdate.title = input.title.trim();
+  if (input.description !== undefined)
+    todoUpdate.description = input.description.trim();
   if (input.completed !== undefined)
     todoUpdate.completed =
       typeof input.completed === "string"
@@ -185,6 +172,7 @@ export function updateTodo(id: number, input: UpdateTodoInput): Todo | null {
         : input.completed;
 
   if (input.priority !== undefined) todoUpdate.priority = input.priority;
+  if (input.dueDate !== undefined) todoUpdate.dueDate = input.dueDate;
 
   todoUpdate.updatedAt = new Date();
 
@@ -196,7 +184,7 @@ export function patchTodo(id: number, input: UpdateTodoInput): Todo | null {
 
   if (!todoUpdate) return null;
 
-  if (input.text !== undefined) todoUpdate.text = input.text.trim();
+  if (input.title !== undefined) todoUpdate.title = input.title.trim();
 
   if (input.completed !== undefined)
     todoUpdate.completed =
