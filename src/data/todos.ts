@@ -143,7 +143,9 @@ export function createTodo(input: CreateTodoInput): Todo {
   const newTodo: Todo = {
     id: nextId++,
     title: input.title.trim(),
-    completed: input.completed === "true" || input.completed === "false",
+    completed: typeof input.completed === "string"
+    ? input.completed === "true"
+    : input.completed ?? false,
     priority: input.priority ?? Priority.Low,
     createdAt: new Date(),
   };
